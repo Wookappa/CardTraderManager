@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: /CardTraderManager.Api/Dockerfile
+    ports:
+      - "5000:5000"
+      - "5050:5050"  # WebSocket Port (log)
+    networks:
+      - cardtrader-network
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - DOTNET_ENVIRONMENT=Development
+
+  frontend:
+    build:
+      context: ./CardTraderManager.Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    networks:
+      - cardtrader-network
+
+networks:
+  cardtrader-network:
+    driver: bridge

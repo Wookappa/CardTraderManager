@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CardTraderManager.Operations", "CardTraderManager.Operations\CardTraderManager.Operations.csproj", "{C7644A15-8924-4EA6-94D0-ED08716250DE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CardTraderManager.Common", "CardTraderManager.Common\CardTraderManager.Common.csproj", "{07544ABF-1E6C-49EB-8217-B8F00CE651F8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CardTraderManager.Console", "CardTraderManager.Console\CardTraderManager.Console.csproj", "{2A39177A-66C2-4AAC-A2B9-9E79D32962C3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardTraderManager.Functions", "CardTraderManager.Functions\CardTraderManager.Functions.csproj", "{556B910B-5D77-5FF3-D1C9-775426278BEF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardTraderManager.Api", "CardTraderManager.Api\CardTraderManager.Api.csproj", "{4DA1A3FA-1334-46CA-B224-AA793FA86BE0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C7644A15-8924-4EA6-94D0-ED08716250DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7644A15-8924-4EA6-94D0-ED08716250DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7644A15-8924-4EA6-94D0-ED08716250DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7644A15-8924-4EA6-94D0-ED08716250DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07544ABF-1E6C-49EB-8217-B8F00CE651F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07544ABF-1E6C-49EB-8217-B8F00CE651F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07544ABF-1E6C-49EB-8217-B8F00CE651F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07544ABF-1E6C-49EB-8217-B8F00CE651F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A39177A-66C2-4AAC-A2B9-9E79D32962C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A39177A-66C2-4AAC-A2B9-9E79D32962C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A39177A-66C2-4AAC-A2B9-9E79D32962C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A39177A-66C2-4AAC-A2B9-9E79D32962C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{556B910B-5D77-5FF3-D1C9-775426278BEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{556B910B-5D77-5FF3-D1C9-775426278BEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{556B910B-5D77-5FF3-D1C9-775426278BEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{556B910B-5D77-5FF3-D1C9-775426278BEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DA1A3FA-1334-46CA-B224-AA793FA86BE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DA1A3FA-1334-46CA-B224-AA793FA86BE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DA1A3FA-1334-46CA-B224-AA793FA86BE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DA1A3FA-1334-46CA-B224-AA793FA86BE0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CBD8CFFD-AF35-45DD-A89A-96CD883FB582}
+	EndGlobalSection
+EndGlobal
