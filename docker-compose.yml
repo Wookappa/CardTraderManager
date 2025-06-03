@@ -2,12 +2,13 @@ version: '3.9'
 
 services:
   backend:
+    image: gianlucaflorian/cardtradermanager-backend:latest
     build:
       context: .
       dockerfile: /CardTraderManager.Api/Dockerfile
     ports:
       - "5000:5000"
-      - "5050:5050"  # WebSocket Port (log)
+      - "5050:5050"
     networks:
       - cardtrader-network
     environment:
@@ -15,6 +16,7 @@ services:
       - DOTNET_ENVIRONMENT=Development
 
   frontend:
+    image: gianlucaflorian/cardtradermanager-frontend:latest
     build:
       context: ./CardTraderManager.Frontend
       dockerfile: Dockerfile

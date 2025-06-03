@@ -20,6 +20,17 @@ export const usePriceAnalysis = ({ jsonData, addLog, connectToLogStream }: UsePr
   const confirmAbortControllerRef = useRef<AbortController | null>(null);
 
   const extractPriceUpdates = async () => {
+    // Validate JWT Token before starting analysis
+    const jwtToken = jsonData?.ApiSettings?.CardTrader?.JWTToken || jsonData?.CardTrader?.JWTToken;
+    
+    if (!jwtToken || jwtToken.trim() === '') {
+      toast.error("JWT Token is required", {
+        description: "Please enter your CardTrader JWT Token in the API Settings before analyzing prices."
+      });
+      addLog("ERROR: JWT Token is required to analyze prices");
+      return;
+    }
+    
     setIsLoading(true);
     
     // Create new AbortController for this request

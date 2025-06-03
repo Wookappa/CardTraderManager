@@ -1,16 +1,20 @@
 
 // API configuration based on environment
 const getApiBaseUrl = (): string => {
-  // Check if running in Docker by looking for common Docker environment indicators
+  const isRunningOnAzure = window.location.hostname.includes(".azurecontainerapps.io");
+
+  if (isRunningOnAzure) {
+    // Replace with your actual backend FQDN (HTTPS!)
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
   const isDocker = window.location.hostname === 'localhost' && window.location.port === '8080' ||
                    process.env.NODE_ENV === 'production' ||
                    window.location.hostname !== 'localhost';
-  
+
   if (isDocker) {
-    // Docker environment - use port 5000
     return "http://localhost:5000";
   } else {
-    // Local development - use port 7083
     return "https://localhost:7083";
   }
 };

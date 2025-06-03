@@ -80,7 +80,10 @@ const ApiSettingsForm = ({ data, onChange }: ApiSettingsFormProps) => {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="jwtToken">JWT Token</Label>
+            <Label htmlFor="jwtToken" className="flex items-center gap-1">
+              JWT Token
+              <span className="text-red-500">*</span>
+            </Label>
             <div className="flex items-center space-x-2">
               <Button 
                 variant="ghost" 
@@ -109,10 +112,11 @@ const ApiSettingsForm = ({ data, onChange }: ApiSettingsFormProps) => {
               value={data?.CardTrader?.JWTToken || ""}
               onChange={(e) => handleChange("JWTToken", e.target.value)}
               placeholder="Enter your JWT token"
+              className={!data?.CardTrader?.JWTToken ? "border-red-300 focus:border-red-500" : ""}
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Your CardTrader API JWT token is used to authenticate your requests.
+            <span className="text-red-500">*</span> Required: Your CardTrader API JWT token is used to authenticate your requests.
           </p>
         </div>
         

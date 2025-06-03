@@ -3,16 +3,20 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 
 // Helper function to determine WebSocket URL based on environment
 const getWebSocketUrl = (): string => {
-  // Check if running in Docker by looking for common Docker environment indicators
+  const isRunningOnAzure = window.location.hostname.includes(".azurecontainerapps.io");
+
+  if (isRunningOnAzure) {
+    // Replace with your actual backend FQDN
+    return import.meta.env.VITE_WS_URL;
+  }
+
   const isDocker = window.location.hostname === 'localhost' && window.location.port === '8080' ||
                    process.env.NODE_ENV === 'production' ||
                    window.location.hostname !== 'localhost';
-  
+
   if (isDocker) {
-    // Docker environment - use port 5000
     return "ws://localhost:5000/logs";
   } else {
-    // Local development - use port 5050
     return "ws://localhost:5050/logs";
   }
 };
