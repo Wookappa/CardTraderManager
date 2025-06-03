@@ -59,9 +59,9 @@ const FileUploadSection = ({ onJsonLoaded, onCreateNew }: FileUploadSectionProps
       <div className="w-full max-w-2xl mx-auto space-y-6">
         <Card className="card-hover-effect">
           <CardHeader>
-            <CardTitle className="text-2xl">Card Market Settings Wizard</CardTitle>
+            <CardTitle className="text-2xl">CardTrader Settings Wizard</CardTitle>
             <CardDescription>
-              Configure your card market settings with this interactive tool
+              Configure your CardTrader settings with this interactive tool
             </CardDescription>
           </CardHeader>
           <CardContent>
