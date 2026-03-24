@@ -1,5 +1,6 @@
 ﻿using CardTraderApi.Client;
 using CardTraderApi.Client.Models.Inventory;
+using CardTraderApi.Client.Models.Marketplace;
 using CardTraderManager.Common.Interfaces;
 using CardTraderManager.Common.Models.Settings;
 using CardTraderManager.Common.Utilities;
@@ -12,10 +13,11 @@ namespace CardTraderManager.Operations.Services;
 public class PriceAnalysisService : IPriceAnalysisService
 {
 	private readonly CardTraderApiClient _cardTraderApiClient;
-	private UpdateStrategiesConfig _updateStrategiesConfig;
+	private volatile UpdateStrategiesConfig _updateStrategiesConfig;
 	private readonly IPriceCalculationService _priceCalculationService;
 	private readonly ILogger<PriceAnalysisService> _logger;
 
+	private const int MaxParallelism = 4;
 
 	public PriceAnalysisService(
 		CardTraderApiClient cardPriceApiClient,
@@ -40,110 +42,146 @@ public class PriceAnalysisService : IPriceAnalysisService
 		var analysisResult = new PriceAnalysisResult
 		{
 			PriceChanges = new List<PriceChangeDetail>(),
-			AnalysisDate = DateTime.Now
+			AnalysisDate = DateTime.UtcNow
 		};
 
-		foreach (var item in itemsBatch)
+		// Cache market data by BlueprintId to avoid duplicate API calls
+		var marketDataCache = new Dictionary<int, IReadOnlyCollection<MarketProduct>>();
+		var semaphore = new SemaphoreSlim(MaxParallelism);
+		var lockObj = new object();
+
+		var tasks = itemsBatch.Select(item => ProcessItemAsync(
+			item, marketDataCache, semaphore, lockObj, analysisResult, cancellationToken
+		));
+
+		await Task.WhenAll(tasks);
+
+		return analysisResult;
+	}
+
+	private async Task ProcessItemAsync(
+		InventoryProduct item,
+		Dictionary<int, IReadOnlyCollection<MarketProduct>> marketDataCache,
+		SemaphoreSlim semaphore,
+		object lockObj,
+		PriceAnalysisResult analysisResult,
+		CancellationToken cancellationToken)
+	{
+		await semaphore.WaitAsync(cancellationToken);
+		try
 		{
-			try
+			cancellationToken.ThrowIfCancellationRequested();
+
+			var shouldSkip = _updateStrategiesConfig.DescriptionToSkip.Any() &&
+							 item.Description != null &&
+							 _updateStrategiesConfig.DescriptionToSkip.Any(skip => item.Description.Contains(skip));
+
+			if (shouldSkip)
 			{
-				cancellationToken.ThrowIfCancellationRequested();
+				_logger.LogInformation("Skipping item ID: {ItemId} because its description contains a term from DescriptionToSkip", item.Id);
+				return;
+			}
 
-				var shouldSkip = _updateStrategiesConfig.DescriptionToSkip.Any() &&
-								 item.Description != null &&
-								 _updateStrategiesConfig.DescriptionToSkip.Any(skip => item.Description.Contains(skip));
+			_logger.LogInformation("Begin fetch price for Item: {ItemName}", item.NameEn);
 
-				if (shouldSkip)
-				{
-					_logger.LogInformation("Skipping item ID: {ItemId} because its description contains a term from DescriptionToSkip", item.Id);
-					continue;
-				}
+			// Check cache for market data by BlueprintId
+			IReadOnlyCollection<MarketProduct>? allMarketProducts;
+			lock (lockObj)
+			{
+				marketDataCache.TryGetValue(item.BlueprintId, out allMarketProducts);
+			}
 
-				_logger.LogInformation("Begin fetch price for Item: {ItemName}", item.NameEn);
-
+			if (allMarketProducts == null)
+			{
 				var productsOnMarket = await _cardTraderApiClient.Marketplace.GetMarketPlaceProductByBlueprintId(item.BlueprintId);
 
 				if (!productsOnMarket.Values.Any())
 				{
 					_logger.LogWarning("No market data found for item ID: {ItemId}", item.Id);
-					continue;
+					return;
 				}
 
-				var productOnMarket = productsOnMarket.Values.First();
-
-				var filteredProducts = productOnMarket
-					.Where(p => p.PropertiesHash.Condition == item.PropertiesHash?.Condition &&
-								 p.PropertiesHash.MtgFoil == item.PropertiesHash.MtgFoil &&
-								 item.Expansion != null &&
-								 p.Expansion.Id == item.Expansion.Id &&
-								 p.PropertiesHash.MtgLanguage == item.PropertiesHash.MtgLanguage)
-					.ToList();
-
-				if (filteredProducts.Count == 0)
+				allMarketProducts = productsOnMarket.Values.First().ToList();
+				lock (lockObj)
 				{
-					_logger.LogWarning("No filtered products found for item ID: {ItemId}", item.Id);
-					continue;
-				}
-
-				var customPrice = _updateStrategiesConfig.UseCustomRules
-					? _priceCalculationService.ApplyCustomRules(item, filteredProducts)
-					: null;
-
-				decimal basePriceEuros;
-
-				if (customPrice.HasValue)
-				{
-					basePriceEuros = customPrice.Value;
-				}
-				else
-				{
-					try
-					{
-						basePriceEuros = _priceCalculationService.CalculateBasePrice(filteredProducts, item);
-					}
-					catch (OperationCanceledException)
-					{
-						_logger.LogWarning("Price calculation was cancelled for item ID: {ItemId}", item.Id);
-						throw;
-					}
-					catch (Exception ex)
-					{
-						_logger.LogError(ex, "Error calculating base price for item ID: {ItemId}", item.Id);
-						continue;
-					}
-				}
-
-				basePriceEuros = Math.Round(basePriceEuros, 2);
-				if (Conversion.ConvertToDecimalRatio(item.PriceCents) != basePriceEuros)
-				{
-					if (item.NameEn != null)
-					{
-						analysisResult.PriceChanges.Add(new PriceChangeDetail(
-							item.Id,
-							item.NameEn,
-							Conversion.ConvertToDecimalRatio(filteredProducts
-								.OrderBy(p => p.Price.Cents)
-								.First().PriceCents),
-							Conversion.ConvertToDecimalRatio(filteredProducts
-								.OrderByDescending(p => p.Price.Cents)
-								.First().PriceCents),
-							Conversion.ConvertToDecimalRatio(StatisticsHelper.Mean(filteredProducts.Select(p => p.Price.Cents).ToList())),
-							Conversion.ConvertToDecimalRatio(item.PriceCents),
-							basePriceEuros
-						));
-					}
+					marketDataCache.TryAdd(item.BlueprintId, allMarketProducts);
 				}
 			}
-			catch (OperationCanceledException)
+
+			var filteredProducts = allMarketProducts
+				.Where(p => p.PropertiesHash.Condition == item.PropertiesHash?.Condition &&
+							 p.PropertiesHash.MtgFoil == item.PropertiesHash.MtgFoil &&
+							 item.Expansion != null &&
+							 p.Expansion.Id == item.Expansion.Id &&
+							 p.PropertiesHash.MtgLanguage == item.PropertiesHash.MtgLanguage)
+				.ToList();
+
+			if (filteredProducts.Count == 0)
 			{
-				throw;
+				_logger.LogWarning("No filtered products found for item ID: {ItemId}", item.Id);
+				return;
 			}
-			catch (Exception ex)
+
+			var customPrice = _updateStrategiesConfig.UseCustomRules
+				? _priceCalculationService.ApplyCustomRules(item, filteredProducts)
+				: null;
+
+			decimal basePriceEuros;
+
+			if (customPrice.HasValue)
 			{
-				_logger.LogError(ex, "Error processing item ID: {ItemId}", item.Id);
+				basePriceEuros = customPrice.Value;
+			}
+			else
+			{
+				try
+				{
+					basePriceEuros = _priceCalculationService.CalculateBasePrice(filteredProducts, item);
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Error calculating base price for item ID: {ItemId}", item.Id);
+					return;
+				}
+			}
+
+			basePriceEuros = Math.Round(basePriceEuros, 2);
+			if (Conversion.ConvertToDecimalRatio(item.PriceCents) != basePriceEuros)
+			{
+				if (item.NameEn != null)
+				{
+					var priceChange = new PriceChangeDetail(
+						item.Id,
+						item.NameEn,
+						Conversion.ConvertToDecimalRatio(filteredProducts
+							.OrderBy(p => p.Price.Cents)
+							.First().PriceCents),
+						Conversion.ConvertToDecimalRatio(filteredProducts
+							.OrderByDescending(p => p.Price.Cents)
+							.First().PriceCents),
+						Conversion.ConvertToDecimalRatio(StatisticsHelper.Mean(filteredProducts.Select(p => p.Price.Cents).ToList())),
+						Conversion.ConvertToDecimalRatio(item.PriceCents),
+						basePriceEuros
+					);
+
+					lock (lockObj)
+					{
+						analysisResult.PriceChanges.Add(priceChange);
+					}
+				}
 			}
 		}
-
-		return analysisResult;
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error processing item ID: {ItemId}", item.Id);
+		}
+		finally
+		{
+			semaphore.Release();
+		}
 	}
 }

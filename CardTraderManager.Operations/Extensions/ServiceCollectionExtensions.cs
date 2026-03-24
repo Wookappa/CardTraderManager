@@ -25,7 +25,6 @@ public static class ServiceCollectionExtensions
 
 		// Business services
 		services.AddScoped<ICardPriceUpdateService, CardPriceUpdateService>();
-		services.AddScoped<IMarketDataService, MarketDataService>();
 		services.AddScoped<IPriceAnalysisService, PriceAnalysisService>();
 		services.AddScoped<IPriceCalculationService, PriceCalculationService>();
 

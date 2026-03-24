@@ -11,125 +11,66 @@ namespace CardTraderManager.Operations.Services;
 public class CardPriceUpdateService : ICardPriceUpdateService
 {
 	private readonly CardTraderApiClient _cardTraderApiClient;
-	private readonly IMarketDataService _marketDataService;
+	private readonly IPriceAnalysisService _priceAnalysisService;
 	private readonly ILogger<CardPriceUpdateService> _logger;
 
 	public CardPriceUpdateService(CardTraderApiClient cardTraderApiClient,
-		IMarketDataService marketDataService,
+		IPriceAnalysisService priceAnalysisService,
 		ILogger<CardPriceUpdateService> logger)
 	{
 		_cardTraderApiClient = cardTraderApiClient;
-		_marketDataService = marketDataService;
+		_priceAnalysisService = priceAnalysisService;
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-	public async Task<PriceAnalysisResult> AnalyzeAndPushPriceUpdatesAsync(IReadOnlyCollection<InventoryProduct>? items = null, CancellationToken cancellationToken = default)
+	public Task<PriceAnalysisResult> AnalyzeAndPushPriceUpdatesAsync(
+		IReadOnlyCollection<InventoryProduct>? items = null,
+		CancellationToken cancellationToken = default)
 	{
-		try
+		return ExecuteWithTimingAsync(async ct =>
 		{
-			var totalStopwatch = Stopwatch.StartNew();
-
-			var analysisResult = await _marketDataService.ExtractPriceUpdatesAsync(items, cancellationToken);
-			await PushPriceUpdates(analysisResult, cancellationToken);
-
-			totalStopwatch.Stop();
-
-			analysisResult.IsSuccess = true;
-			analysisResult.ElapsedTime = totalStopwatch.Elapsed;
-
-			_logger.LogInformation("Total time to process all items: {ElapsedTime}", totalStopwatch.Elapsed);
-
+			var analysisResult = await ExtractPriceUpdatesAsync(items, ct);
+			await PushPriceUpdates(analysisResult, ct);
 			return analysisResult;
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			_logger.LogInformation("Price update operation was cancelled");
-			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = "operation was cancelled" };
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error in AnalyzeAndPushPriceUpdatesAsync");
-			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = ex.Message };
-		}
+		}, cancellationToken);
 	}
 
-	public async Task<PriceAnalysisResult> AnalyzePriceUpdatesOnlyAsync(IReadOnlyCollection<InventoryProduct>? items = null, CancellationToken cancellationToken = default)
+	public Task<PriceAnalysisResult> AnalyzePriceUpdatesOnlyAsync(
+		IReadOnlyCollection<InventoryProduct>? items = null,
+		CancellationToken cancellationToken = default)
 	{
-		try
-		{
-			var totalStopwatch = Stopwatch.StartNew();
-
-			var analysisResult = await _marketDataService.ExtractPriceUpdatesAsync(items, cancellationToken);
-			analysisResult.IsSuccess = true;
-
-			totalStopwatch.Stop();
-
-			analysisResult.ElapsedTime = totalStopwatch.Elapsed;
-
-			_logger.LogInformation("Total time to process all items: {ElapsedTime}", totalStopwatch.Elapsed);
-
-			return analysisResult;
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			_logger.LogInformation("Get items price operation was cancelled");
-			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = "operation was cancelled" };
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error in AnalyzePriceUpdatesOnlyAsync");
-			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = ex.Message };
-		}
+		return ExecuteWithTimingAsync(
+			async ct => await ExtractPriceUpdatesAsync(items, ct),
+			cancellationToken);
 	}
 
-	public async Task<PriceAnalysisResult> PushPriceUpdatesOnlyAsync(PriceAnalysisResult analysisResult, CancellationToken cancellationToken = default)
+	public Task<PriceAnalysisResult> PushPriceUpdatesOnlyAsync(
+		PriceAnalysisResult analysisResult,
+		CancellationToken cancellationToken = default)
 	{
-		try
+		return ExecuteWithTimingAsync(async ct =>
 		{
-			var totalStopwatch = Stopwatch.StartNew();
-
-			await PushPriceUpdates(analysisResult, cancellationToken);
-
-			totalStopwatch.Stop();
-
-			analysisResult.IsSuccess = true;
-			analysisResult.ElapsedTime = totalStopwatch.Elapsed;
-
-			_logger.LogInformation("Total time to process all items: {ElapsedTime}", totalStopwatch.Elapsed);
-
+			await PushPriceUpdates(analysisResult, ct);
 			return analysisResult;
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			_logger.LogInformation("Price update operation was cancelled");
-			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = "operation was cancelled" };
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error in AnalyzeAndPushPriceUpdatesAsync");
-			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = ex.Message };
-		}
+		}, cancellationToken);
 	}
-
 
 	public async Task<IList<IList<InventoryProduct>>> ExtractBatchOfItems(int batchSize, CancellationToken cancellationToken)
 	{
-		// Fetch the list of products
 		var listedProducts = await _cardTraderApiClient.Inventory.GetUserProducts();
-
-		// Use the Batch extension method to split the list into batches
-		var listOfBatches = listedProducts.Batch(batchSize).ToList();
-
-		// Return the list of batches
-		return listOfBatches;
+		return listedProducts.Batch(batchSize).ToList();
 	}
 
 	public async Task PushPriceUpdates(PriceAnalysisResult analysisResult, CancellationToken cancellationToken)
 	{
+		var failedItems = new List<(int ItemId, string Error)>();
+
 		foreach (var changeDetail in analysisResult.PriceChanges)
 		{
 			try
 			{
+				cancellationToken.ThrowIfCancellationRequested();
+
 				var updateSuccessful = await _cardTraderApiClient.Inventory.Update(changeDetail.ItemId, changeDetail.NewPrice);
 
 				if (updateSuccessful != null)
@@ -152,14 +93,59 @@ public class CardPriceUpdateService : ICardPriceUpdateService
 			{
 				throw;
 			}
-			catch (CardTraderApiException e)
+			catch (Exception e)
 			{
-				Console.WriteLine(e);
 				_logger.LogError(e, "Failed to update price for item ID: {ItemId}", changeDetail.ItemId);
-				throw;
+				failedItems.Add((changeDetail.ItemId, e.Message));
 			}
 		}
 
-		_logger.LogInformation("Price update push completed. Updated prices: {PriceChangesCount}", analysisResult.PriceChanges.Count);
+		var updatedCount = analysisResult.PriceChanges.Count(p => p.Updated);
+		_logger.LogInformation("Price update push completed. Updated: {UpdatedCount}/{TotalCount}",
+			updatedCount, analysisResult.PriceChanges.Count);
+
+		if (failedItems.Count > 0)
+		{
+			_logger.LogWarning("Failed to update {FailedCount} items: {FailedItems}",
+				failedItems.Count, string.Join(", ", failedItems.Select(f => $"#{f.ItemId}: {f.Error}")));
+		}
+	}
+
+	private async Task<PriceAnalysisResult> ExtractPriceUpdatesAsync(
+		IReadOnlyCollection<InventoryProduct>? items,
+		CancellationToken cancellationToken)
+	{
+		var listedProducts = items ?? await _cardTraderApiClient.Inventory.GetUserProducts();
+		return await _priceAnalysisService.CalculateAnalysisResult(listedProducts, cancellationToken);
+	}
+
+	private async Task<PriceAnalysisResult> ExecuteWithTimingAsync(
+		Func<CancellationToken, Task<PriceAnalysisResult>> operation,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			var stopwatch = Stopwatch.StartNew();
+
+			var result = await operation(cancellationToken);
+
+			stopwatch.Stop();
+			result.IsSuccess = true;
+			result.ElapsedTime = stopwatch.Elapsed;
+
+			_logger.LogInformation("Operation completed in {ElapsedTime}", stopwatch.Elapsed);
+
+			return result;
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			_logger.LogInformation("Operation was cancelled");
+			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = "Operation was cancelled" };
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Operation failed");
+			return new PriceAnalysisResult { IsSuccess = false, ErrorMessage = ex.Message };
+		}
 	}
 }
