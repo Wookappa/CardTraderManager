@@ -1,4 +1,5 @@
 ﻿using CardTraderManager.Common.Models.Settings;
+using CardTraderManager.Operations.Models;
 
 namespace CardTraderManager.Api.Wrappers
 {
@@ -10,5 +11,7 @@ namespace CardTraderManager.Api.Wrappers
 		}
 
 		public ApplicationSettings ApplicationSettings { get; set; }
+
+		public AnalysisFilters? Filters { get; set; }
 	}
 }

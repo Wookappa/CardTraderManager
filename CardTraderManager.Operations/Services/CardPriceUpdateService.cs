@@ -1,5 +1,6 @@
 ﻿using CardTraderApi.Client;
 using CardTraderApi.Client.Models.Inventory;
+using CardTraderManager.Common.Utilities;
 using CardTraderManager.Operations.Helpers;
 using CardTraderManager.Operations.Interfaces;
 using CardTraderManager.Operations.Models;
@@ -25,11 +26,12 @@ public class CardPriceUpdateService : ICardPriceUpdateService
 
 	public Task<PriceAnalysisResult> AnalyzeAndPushPriceUpdatesAsync(
 		IReadOnlyCollection<InventoryProduct>? items = null,
+		AnalysisFilters? filters = null,
 		CancellationToken cancellationToken = default)
 	{
 		return ExecuteWithTimingAsync(async ct =>
 		{
-			var analysisResult = await ExtractPriceUpdatesAsync(items, ct);
+			var analysisResult = await ExtractPriceUpdatesAsync(items, filters, ct);
 			await PushPriceUpdates(analysisResult, ct);
 			return analysisResult;
 		}, cancellationToken);
@@ -37,10 +39,11 @@ public class CardPriceUpdateService : ICardPriceUpdateService
 
 	public Task<PriceAnalysisResult> AnalyzePriceUpdatesOnlyAsync(
 		IReadOnlyCollection<InventoryProduct>? items = null,
+		AnalysisFilters? filters = null,
 		CancellationToken cancellationToken = default)
 	{
 		return ExecuteWithTimingAsync(
-			async ct => await ExtractPriceUpdatesAsync(items, ct),
+			async ct => await ExtractPriceUpdatesAsync(items, filters, ct),
 			cancellationToken);
 	}
 
@@ -113,10 +116,64 @@ public class CardPriceUpdateService : ICardPriceUpdateService
 
 	private async Task<PriceAnalysisResult> ExtractPriceUpdatesAsync(
 		IReadOnlyCollection<InventoryProduct>? items,
+		AnalysisFilters? filters,
 		CancellationToken cancellationToken)
 	{
 		var listedProducts = items ?? await _cardTraderApiClient.Inventory.GetUserProducts();
+
+		if (filters != null && filters.HasAnyFilter)
+		{
+			var filtered = ApplyFilters(listedProducts, filters);
+			_logger.LogInformation("Filters applied: {OriginalCount} → {FilteredCount} items",
+				listedProducts.Count, filtered.Count);
+			listedProducts = filtered;
+		}
+
 		return await _priceAnalysisService.CalculateAnalysisResult(listedProducts, cancellationToken);
+	}
+
+	private static IReadOnlyCollection<InventoryProduct> ApplyFilters(
+		IReadOnlyCollection<InventoryProduct> items, AnalysisFilters filters)
+	{
+		IEnumerable<InventoryProduct> query = items;
+
+		if (filters.MinPrice.HasValue)
+		{
+			var minCents = filters.MinPrice.Value;
+			query = query.Where(i => Conversion.ConvertToDecimalRatio(i.PriceCents) >= minCents);
+		}
+
+		if (filters.MaxPrice.HasValue)
+		{
+			var maxCents = filters.MaxPrice.Value;
+			query = query.Where(i => Conversion.ConvertToDecimalRatio(i.PriceCents) <= maxCents);
+		}
+
+		if (!string.IsNullOrWhiteSpace(filters.CardName))
+		{
+			query = query.Where(i => i.NameEn != null &&
+				i.NameEn.Contains(filters.CardName, StringComparison.OrdinalIgnoreCase));
+		}
+
+		if (filters.Conditions is { Count: > 0 })
+		{
+			var conditionSet = new HashSet<string>(filters.Conditions, StringComparer.OrdinalIgnoreCase);
+			query = query.Where(i => i.PropertiesHash?.Condition != null &&
+				conditionSet.Contains(i.PropertiesHash.Condition));
+		}
+
+		if (filters.ExpansionIds is { Count: > 0 })
+		{
+			var expansionSet = new HashSet<int>(filters.ExpansionIds);
+			query = query.Where(i => i.Expansion != null && expansionSet.Contains(i.Expansion.Id));
+		}
+
+		if (filters.IsFoil.HasValue)
+		{
+			query = query.Where(i => i.PropertiesHash?.MtgFoil == filters.IsFoil.Value);
+		}
+
+		return query.ToList().AsReadOnly();
 	}
 
 	private async Task<PriceAnalysisResult> ExecuteWithTimingAsync(

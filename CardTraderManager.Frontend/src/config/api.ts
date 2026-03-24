@@ -6,15 +6,13 @@ const getApiBaseUrl = (): string => {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  const isDocker = window.location.hostname === 'localhost' && window.location.port === '8080' ||
-                   import.meta.env.PROD ||
-                   window.location.hostname !== 'localhost';
-
-  if (isDocker) {
-    return "http://localhost:5000";
-  } else {
-    return "https://localhost:7083";
+  // In production builds (Docker/deployed), backend runs on port 5000
+  // In dev mode (Vite dev server), backend runs on HTTPS port 7083
+  if (import.meta.env.PROD) {
+    return `${window.location.protocol}//${window.location.hostname}:5000`;
   }
+
+  return "https://localhost:7083";
 };
 
 export const API_CONFIG = {

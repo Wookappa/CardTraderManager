@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Clipboard, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getApiUrl } from "@/config/api";
 
 interface ApiSettingsFormProps {
   data: any;
@@ -47,20 +48,29 @@ const ApiSettingsForm = ({ data, onChange }: ApiSettingsFormProps) => {
 
     setTestingConnection(true);
     try {
-      const response = await fetch("https://api.cardtrader.com/api/v2/info", {
-        method: "GET",
+      const response = await fetch(getApiUrl("/api/PriceUpdate/TestConnection"), {
+        method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ jwtToken: token })
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
         toast.success("API connection successful!", {
-          description: `Connected to CardTrader API v${data.version || '2'}`
+          description: `Connected to CardTrader API (${result.gamesCount} games available)`
         });
       } else {
-        throw new Error(`API returned status: ${response.status}`);
+        let errorMessage = `API returned status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       toast.error("Connection test failed", {

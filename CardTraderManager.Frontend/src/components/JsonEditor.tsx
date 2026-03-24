@@ -4,6 +4,7 @@ import { EditorHeader } from "./header/EditorHeader";
 import { EditorLayout } from "./editor/EditorLayout";
 import { LogsViewer } from "./viewer/LogsViewer";
 import { PriceAnalysisResults } from "./analysis/PriceAnalysisResults";
+import { AnalysisFiltersPanel } from "./analysis/AnalysisFiltersPanel";
 import { useWebSocketLogs } from "@/hooks/useWebSocketLogs";
 import { usePriceAnalysis } from "@/hooks/usePriceAnalysis";
 import { useJsonUtilities } from "@/hooks/useJsonUtilities";
@@ -34,6 +35,8 @@ const JsonEditor = ({ initialData, onBack }: JsonEditorProps) => {
     setIsAnalysisOpen,
     isLoading,
     isConfirming,
+    filters,
+    setFilters,
     extractPriceUpdates,
     confirmPriceUpdates,
     cancelAnalysis,
@@ -67,6 +70,8 @@ const JsonEditor = ({ initialData, onBack }: JsonEditorProps) => {
         setShowLogs={setShowLogs}
         cancelAnalysis={cancelAnalysis}
       />
+
+      <AnalysisFiltersPanel filters={filters} onChange={setFilters} />
       
       <LogsViewer
         logs={logs}

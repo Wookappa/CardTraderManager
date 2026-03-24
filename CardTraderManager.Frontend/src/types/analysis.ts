@@ -71,6 +71,16 @@ export interface ApplicationSettings {
   UpdateStrategiesConfig: UpdateStrategiesConfig;
 }
 
+export interface AnalysisFilters {
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  cardName?: string | null;
+  conditions?: string[] | null;
+  expansionIds?: number[] | null;
+  isFoil?: boolean | null;
+}
+
 export interface StartPriceUpdateRequest {
   ApplicationSettings: ApplicationSettings;
+  Filters?: AnalysisFilters | null;
 }

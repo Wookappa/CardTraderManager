@@ -30,7 +30,8 @@ namespace CardTraderManager.Api.Controllers
 		{
 			ApplyRequestSettings(request);
 
-			var result = await _priceUpdateService.AnalyzeAndPushPriceUpdatesAsync(cancellationToken: HttpContext.RequestAborted);
+			var result = await _priceUpdateService.AnalyzeAndPushPriceUpdatesAsync(
+				filters: request?.Filters, cancellationToken: HttpContext.RequestAborted);
 			return Ok(result);
 		}
 
@@ -39,7 +40,8 @@ namespace CardTraderManager.Api.Controllers
 		{
 			ApplyRequestSettings(request);
 
-			var result = await _priceUpdateService.AnalyzePriceUpdatesOnlyAsync(cancellationToken: HttpContext.RequestAborted);
+			var result = await _priceUpdateService.AnalyzePriceUpdatesOnlyAsync(
+				filters: request?.Filters, cancellationToken: HttpContext.RequestAborted);
 			return Ok(result);
 		}
 
@@ -51,6 +53,25 @@ namespace CardTraderManager.Api.Controllers
 				cancellationToken: HttpContext.RequestAborted);
 
 			return Ok(result);
+		}
+
+		[HttpPost(nameof(TestConnection))]
+		public async Task<IActionResult> TestConnection([FromBody] TestConnectionRequest request)
+		{
+			if (string.IsNullOrWhiteSpace(request.JwtToken))
+				return BadRequest("JWT Token is required");
+
+			try
+			{
+				_cardTraderApiClient.UpdateJwtToken(request.JwtToken);
+
+				var games = await _cardTraderApiClient.Marketplace.GetListOfGames();
+				return Ok(new { success = true, gamesCount = games?.Array?.Count ?? 0 });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(401, new { success = false, message = ex.Message });
+			}
 		}
 
 		private void ApplyRequestSettings(StartPriceUpdateRequest? request)

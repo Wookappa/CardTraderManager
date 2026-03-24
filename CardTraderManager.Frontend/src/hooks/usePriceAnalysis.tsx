@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { PriceAnalysisResult, StartPriceUpdateRequest } from '@/types/analysis';
+import { AnalysisFilters, PriceAnalysisResult, StartPriceUpdateRequest } from '@/types/analysis';
 import { getApiUrl, API_CONFIG } from '@/config/api';
 
 interface UsePriceAnalysisProps {
@@ -14,6 +14,7 @@ export const usePriceAnalysis = ({ jsonData, addLog, connectToLogStream }: UsePr
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [filters, setFilters] = useState<AnalysisFilters>({});
   
   // AbortController refs for cancelling requests
   const analysisAbortControllerRef = useRef<AbortController | null>(null);
@@ -50,9 +51,21 @@ export const usePriceAnalysis = ({ jsonData, addLog, connectToLogStream }: UsePr
       addLog(`Sending application settings to the API`);
       
       // Create the request object matching the API expected format
+      const hasFilters = filters && Object.values(filters).some(v => v != null && v !== '' && !(Array.isArray(v) && v.length === 0));
       const requestData: StartPriceUpdateRequest = {
-        ApplicationSettings: jsonData
+        ApplicationSettings: jsonData,
+        Filters: hasFilters ? filters : null,
       };
+
+      if (hasFilters) {
+        const filterDesc = [];
+        if (filters.cardName) filterDesc.push(`name="${filters.cardName}"`);
+        if (filters.minPrice != null) filterDesc.push(`min=€${filters.minPrice}`);
+        if (filters.maxPrice != null) filterDesc.push(`max=€${filters.maxPrice}`);
+        if (filters.conditions?.length) filterDesc.push(`conditions=${filters.conditions.join(',')}`);
+        if (filters.isFoil != null) filterDesc.push(filters.isFoil ? 'foil' : 'non-foil');
+        addLog(`Active filters: ${filterDesc.join(', ')}`);
+      }
       
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -295,6 +308,8 @@ export const usePriceAnalysis = ({ jsonData, addLog, connectToLogStream }: UsePr
     setIsAnalysisOpen,
     isLoading,
     isConfirming,
+    filters,
+    setFilters,
     extractPriceUpdates,
     confirmPriceUpdates,
     cancelAnalysis,

@@ -117,7 +117,7 @@ public class AzureCardPriceUpdater
 			if (batch != null && batch.Count > 0)
 			{
 				var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-				await _priceUpdateService.AnalyzeAndPushPriceUpdatesAsync(batch, cts.Token);
+				await _priceUpdateService.AnalyzeAndPushPriceUpdatesAsync(batch, filters: null, cts.Token);
 				_logger.LogInformation("Price update completed for batch of {batchCount} items.", batch.Count);
 			}
 			else

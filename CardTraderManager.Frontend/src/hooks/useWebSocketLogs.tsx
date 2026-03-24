@@ -8,15 +8,14 @@ const getWebSocketUrl = (): string => {
     return import.meta.env.VITE_WS_URL;
   }
 
-  const isDocker = window.location.hostname === 'localhost' && window.location.port === '8080' ||
-                   import.meta.env.PROD ||
-                   window.location.hostname !== 'localhost';
-
-  if (isDocker) {
-    return "ws://localhost:5000/logs";
-  } else {
-    return "ws://localhost:5050/logs";
+  // In production builds (Docker/deployed), backend runs on port 5000
+  // In dev mode (Vite dev server), backend runs on port 5050
+  if (import.meta.env.PROD) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//${window.location.hostname}:5000/logs`;
   }
+
+  return "ws://localhost:5050/logs";
 };
 
 export const useWebSocketLogs = () => {
