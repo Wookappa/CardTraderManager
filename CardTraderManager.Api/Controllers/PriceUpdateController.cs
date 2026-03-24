@@ -28,66 +28,42 @@ namespace CardTraderManager.Api.Controllers
 		[HttpPost(nameof(StartPriceUpdate))]
 		public async Task<IActionResult> StartPriceUpdate([FromBody] StartPriceUpdateRequest? request = null)
 		{
-			try
-			{
-				if (request?.ApplicationSettings != null)
-				{
-					_settingsProvider.UpdateSettings(request.ApplicationSettings);
-				}
+			ApplyRequestSettings(request);
 
-				if (!string.IsNullOrWhiteSpace(request?.ApplicationSettings.ApiSettings.CardTrader.JwtToken))
-				{
-					_cardTraderApiClient.UpdateJtwToken(request.ApplicationSettings.ApiSettings.CardTrader.JwtToken);
-				}
-
-				var result = await _priceUpdateService.AnalyzeAndPushPriceUpdatesAsync(cancellationToken: HttpContext.RequestAborted);
-				return Ok(result);
-			}
-			catch (Exception ex)
-			{
-				return StatusCode(500, $"Error during price update: {ex.Message}");
-			}
+			var result = await _priceUpdateService.AnalyzeAndPushPriceUpdatesAsync(cancellationToken: HttpContext.RequestAborted);
+			return Ok(result);
 		}
 
 		[HttpPost(nameof(ExtractPriceUpdates))]
 		public async Task<IActionResult> ExtractPriceUpdates([FromBody] StartPriceUpdateRequest? request = null)
 		{
-			try
-			{
-				if (request?.ApplicationSettings != null)
-				{
-					_settingsProvider.UpdateSettings(request.ApplicationSettings);
-				}
+			ApplyRequestSettings(request);
 
-				if (!string.IsNullOrWhiteSpace(request?.ApplicationSettings.ApiSettings.CardTrader.JwtToken))
-				{
-					_cardTraderApiClient.UpdateJtwToken(request.ApplicationSettings.ApiSettings.CardTrader.JwtToken);
-				}
-
-				var result = await _priceUpdateService.AnalyzePriceUpdatesOnlyAsync(cancellationToken: HttpContext.RequestAborted);
-
-				return Ok(result);
-			}
-			catch (Exception ex)
-			{
-				return StatusCode(500, $"Error during price update: {ex.Message}");
-			}
+			var result = await _priceUpdateService.AnalyzePriceUpdatesOnlyAsync(cancellationToken: HttpContext.RequestAborted);
+			return Ok(result);
 		}
 
 		[HttpPost(nameof(PostPriceUpdates))]
 		public async Task<IActionResult> PostPriceUpdates([FromBody] PriceAnalysisResult? analysisResult)
 		{
-			try
-			{
-				var result = await _priceUpdateService.PushPriceUpdatesOnlyAsync(
-					analysisResult ?? throw new ArgumentNullException(nameof(analysisResult)),
-					cancellationToken: HttpContext.RequestAborted);
+			var result = await _priceUpdateService.PushPriceUpdatesOnlyAsync(
+				analysisResult ?? throw new ArgumentNullException(nameof(analysisResult)),
+				cancellationToken: HttpContext.RequestAborted);
 
-				return Ok(result);
-			}
-			catch (Exception ex)
+			return Ok(result);
+		}
+
+		private void ApplyRequestSettings(StartPriceUpdateRequest? request)
+		{
+			if (request?.ApplicationSettings == null)
+				return;
+
+			_settingsProvider.UpdateSettings(request.ApplicationSettings);
+
+			var jwtToken = request.ApplicationSettings.ApiSettings?.CardTrader?.JwtToken;
+			if (!string.IsNullOrWhiteSpace(jwtToken))
 			{
-				return StatusCode(500, $"Error during price update: {ex.Message}");
+				_cardTraderApiClient.UpdateJwtToken(jwtToken);
 			}
 		}
 	}

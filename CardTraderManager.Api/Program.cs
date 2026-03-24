@@ -1,38 +1,42 @@
 ﻿using CardTraderApi.Client;
 using CardTraderManager.Api.WebSocketLogs;
-using CardTraderManager.Common;
-using CardTraderManager.Common.Interfaces;
-using CardTraderManager.Common.Models.Settings.Validators;
-using CardTraderManager.Operations.Interfaces;
-using CardTraderManager.Operations.Services;
+using CardTraderManager.Operations.Extensions;
 using FluentValidation;
+using Microsoft.AspNetCore.Diagnostics;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ➡️ ConcurrentBag per gestire i WebSocket attivi
-var webSocketConnections = new ConcurrentBag<WebSocket>();
+// WebSocket connection manager
+var webSocketConnections = new ConcurrentDictionary<string, WebSocket>();
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+	.AddJsonOptions(options =>
+	{
+		options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+	});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 
-// Enable CORS
+// CORS - restrict to known origins
 builder.Services.AddCors(options =>
 {
-	options.AddPolicy("AllowAll",
+	options.AddPolicy("AllowFrontend",
 		policyBuilder =>
 		{
-			policyBuilder.AllowAnyOrigin()
-				   .AllowAnyMethod()
-				   .AllowAnyHeader();
+			var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+								?? ["http://localhost:8080", "http://localhost:5173"];
+
+			policyBuilder.WithOrigins(allowedOrigins)
+				.AllowAnyMethod()
+				.AllowAnyHeader();
 		});
 });
-
-// Dependency Injection
 
 // Load configuration from appsettings.json
 var configuration = new ConfigurationBuilder()
@@ -40,38 +44,16 @@ var configuration = new ConfigurationBuilder()
 	.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
 	.Build();
 
-// Register configuration for dependency injection
 builder.Services.AddSingleton<IConfiguration>(configuration);
 
-// Configure HttpClient for ICardPriceApiClient
-builder.Services.AddScoped<CardTraderApiClientConfig>(_ =>
-{
-	var config = CardTraderApiClientConfig.GetDefault();
-	return config;
-});
+// Configure HttpClient for CardTrader API
+builder.Services.AddScoped<CardTraderApiClientConfig>(_ => CardTraderApiClientConfig.GetDefault());
+builder.Services.AddCardTraderApiClient(string.Empty);
 
-builder.Services.AddCardTraderApiClient(String.Empty);
+// Register all business services, validators, and settings provider
+builder.Services.AddCardTraderManagerServices();
 
-// Register all validators EXCEPT StrategyConfigValidator (since it requires runtime params)
-builder.Services.AddValidatorsFromAssemblyContaining<ApplicationSettingsValidator>(filter:
-	scanResult => scanResult.ValidatorType != typeof(StrategyConfigValidator)
-);
-
-// Configure ISettingsProvider to provide configuration settings
-builder.Services.AddSingleton<ISettingsProvider, SettingsProvider>();
-
-builder.Services.AddScoped<ICardPriceUpdateService, CardPriceUpdateService>();
-builder.Services.AddScoped<IMarketDataService, MarketDataService>();
-builder.Services.AddScoped<IPriceAnalysisService, PriceAnalysisService>();
-builder.Services.AddScoped<IPriceCalculationService, PriceCalculationService>();
-
-builder.Services.AddControllers()
-	.AddJsonOptions(options =>
-	{
-		options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-	});
-
-// ➡️ Aggiungi il WebSocketLoggerProvider
+// WebSocket logger
 builder.Services.AddSingleton(webSocketConnections);
 builder.Services.AddLogging(loggingBuilder =>
 {
@@ -81,18 +63,40 @@ builder.Services.AddLogging(loggingBuilder =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Global exception handler
+app.UseExceptionHandler(errorApp =>
+{
+	errorApp.Run(async context =>
+	{
+		context.Response.StatusCode = 500;
+		context.Response.ContentType = "application/json";
+
+		var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
+		if (exceptionFeature != null)
+		{
+			var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+			logger.LogError(exceptionFeature.Error, "Unhandled exception");
+
+			await context.Response.WriteAsJsonAsync(new
+			{
+				error = exceptionFeature.Error.Message,
+				type = exceptionFeature.Error.GetType().Name
+			});
+		}
+	});
+});
+
+// Swagger in development
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
 	app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseAuthorization();
-app.MapControllers();
 
-// ➡️ **WebSocket Middleware per lo streaming dei log**
+// WebSocket middleware BEFORE MapControllers
 app.UseWebSockets();
 app.Use(async (context, next) =>
 {
@@ -101,12 +105,24 @@ app.Use(async (context, next) =>
 		if (context.WebSockets.IsWebSocketRequest)
 		{
 			var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-			webSocketConnections.Add(webSocket);
-			Console.WriteLine("✅ WebSocket Connection Established.");
+			var connectionId = Guid.NewGuid().ToString();
+			webSocketConnections.TryAdd(connectionId, webSocket);
 
-			while (webSocket.State == WebSocketState.Open)
+			try
 			{
-				await Task.Delay(1000); // Mantieni aperta la connessione
+				var buffer = new byte[1024];
+				while (webSocket.State == WebSocketState.Open)
+				{
+					var result = await webSocket.ReceiveAsync(buffer, CancellationToken.None);
+					if (result.MessageType == WebSocketMessageType.Close)
+						break;
+				}
+			}
+			finally
+			{
+				webSocketConnections.TryRemove(connectionId, out _);
+				if (webSocket.State == WebSocketState.Open)
+					await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
 			}
 		}
 		else
@@ -119,5 +135,8 @@ app.Use(async (context, next) =>
 		await next();
 	}
 });
+
+app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();

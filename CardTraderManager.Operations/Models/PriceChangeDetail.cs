@@ -3,7 +3,7 @@
 	public class PriceChangeDetail
 	{
 		public int ItemId { get; set; }
-		public string CardName { get; set; }
+		public string? CardName { get; set; }
 		public decimal MinPrice { get; set; }
 		public decimal MaxPrice { get; set; }
 		public decimal Median { get; set; }
@@ -13,7 +13,7 @@
 		public bool Updated { get; set; }
 		public string? Warning { get; set; }
 
-		public PriceChangeDetail(int itemId, string cardName, decimal minPrice, decimal maxPrice, decimal median,
+		public PriceChangeDetail(int itemId, string? cardName, decimal minPrice, decimal maxPrice, decimal median,
 			decimal oldPrice, decimal newPrice, string? warning = null)
 		{
 			ItemId = itemId;

@@ -155,7 +155,7 @@ public class CardPriceUpdateService : ICardPriceUpdateService
 			catch (CardTraderApiException e)
 			{
 				Console.WriteLine(e);
-				_logger.LogError("Failed to update price for item ID: {ItemId}", changeDetail.ItemId);
+				_logger.LogError(e, "Failed to update price for item ID: {ItemId}", changeDetail.ItemId);
 				throw;
 			}
 		}

@@ -5,9 +5,9 @@ namespace CardTraderManager.Api.WebSocketLogs
 {
 	public class WebSocketLoggerProvider : ILoggerProvider
 	{
-		private readonly ConcurrentBag<WebSocket> _webSockets;
+		private readonly ConcurrentDictionary<string, WebSocket> _webSockets;
 
-		public WebSocketLoggerProvider(ConcurrentBag<WebSocket> webSockets)
+		public WebSocketLoggerProvider(ConcurrentDictionary<string, WebSocket> webSockets)
 		{
 			_webSockets = webSockets;
 		}

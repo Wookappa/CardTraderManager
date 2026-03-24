@@ -99,7 +99,7 @@ public class PriceAnalysisService : IPriceAnalysisService
 				{
 					try
 					{
-						basePriceEuros = await _priceCalculationService.CalculateBasePrice(filteredProducts, item);
+						basePriceEuros = _priceCalculationService.CalculateBasePrice(filteredProducts, item);
 					}
 					catch (OperationCanceledException)
 					{

@@ -7,7 +7,7 @@ namespace CardTraderManager.Operations.Interfaces
 	{
 		decimal? ApplyCustomRules(InventoryProduct item, IReadOnlyCollection<MarketProduct> filteredProducts);
 
-		Task<decimal> CalculateBasePrice(IReadOnlyCollection<MarketProduct> filteredProducts,
+		decimal CalculateBasePrice(IReadOnlyCollection<MarketProduct> filteredProducts,
 			InventoryProduct item);
 	}
 }

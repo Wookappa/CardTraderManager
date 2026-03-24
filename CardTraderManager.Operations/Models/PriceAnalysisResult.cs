@@ -6,6 +6,6 @@
 		public bool IsSuccess { get; set; }
 		public string? ErrorMessage { get; set; }
 		public TimeSpan ElapsedTime { get; set; }
-		public DateTime AnalysisDate { get; set; } = DateTime.Now;
+		public DateTime AnalysisDate { get; set; } = DateTime.UtcNow;
 	}
 }

@@ -4,9 +4,10 @@
 	{
 		public static IEnumerable<IList<T>> Batch<T>(this IEnumerable<T> source, int batchSize)
 		{
-			for (var i = 0; i < source.Count(); i += batchSize)
+			var list = source as IList<T> ?? source.ToList();
+			for (var i = 0; i < list.Count; i += batchSize)
 			{
-				yield return source.Skip(i).Take(batchSize).ToList();
+				yield return list.Skip(i).Take(batchSize).ToList();
 			}
 		}
 	}

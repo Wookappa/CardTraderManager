@@ -2,22 +2,9 @@
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PriceAnalysisResult } from "@/types/analysis";
+import { PriceAnalysisResult, PriceChangeDetail } from "@/types/analysis";
 import { useState } from "react";
 import { X } from "lucide-react";
-
-interface PriceChangeDetail {
-  itemId: number;
-  cardName: string;
-  minPrice: number;
-  maxPrice: number;
-  median: number;
-  oldPrice: number;
-  newPrice: number;
-  priceChange?: number;
-  updated: boolean;
-  warning?: string;
-}
 
 interface PriceAnalysisResultsProps {
   isAnalysisOpen: boolean;

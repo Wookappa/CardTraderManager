@@ -1,15 +1,13 @@
 
 // API configuration based on environment
 const getApiBaseUrl = (): string => {
-  const isRunningOnAzure = window.location.hostname.includes(".azurecontainerapps.io");
-
-  if (isRunningOnAzure) {
-    // Replace with your actual backend FQDN (HTTPS!)
+  // Explicit env override
+  if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
   const isDocker = window.location.hostname === 'localhost' && window.location.port === '8080' ||
-                   process.env.NODE_ENV === 'production' ||
+                   import.meta.env.PROD ||
                    window.location.hostname !== 'localhost';
 
   if (isDocker) {

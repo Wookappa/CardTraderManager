@@ -8,7 +8,7 @@ namespace CardTraderManager.Common
 {
 	public class SettingsProvider : ISettingsProvider
 	{
-		private ApplicationSettings _applicationSettings;
+		private volatile ApplicationSettings _applicationSettings;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 
 		public event Action? OnSettingsUpdated;

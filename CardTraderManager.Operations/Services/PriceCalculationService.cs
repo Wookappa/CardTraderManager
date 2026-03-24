@@ -41,7 +41,7 @@ public class PriceCalculationService : IPriceCalculationService
 		{
 			// Check if card name and condition match (if specified)
 			var cardNameMatches = string.IsNullOrEmpty(rule.ItemName) || rule.ItemName == item.NameEn;
-			var conditionMatches = string.IsNullOrEmpty(rule.Condition) || rule.Condition == item.NameEn;
+			var conditionMatches = string.IsNullOrEmpty(rule.Condition) || rule.Condition == item.PropertiesHash?.Condition;
 
 			if ((!cardNameMatches || !conditionMatches) &&
 				(!string.IsNullOrEmpty(rule.ItemName) || !string.IsNullOrEmpty(rule.Condition)))
@@ -87,7 +87,8 @@ public class PriceCalculationService : IPriceCalculationService
 					var targetPrice = lowestSealedWithCtZeroPrice.Value - CardTraderZeroPriceReduction;
 					if (newPriceEuros >= targetPrice)
 					{
-						_logger.LogInformation($"Price to be at least {CardTraderZeroPriceReduction} lower. Original: {newPriceEuros}, Cheapest CT Zero: {lowestSealedWithCtZeroPrice.Value}");
+						_logger.LogInformation("Price to be at least {PriceReduction} lower. Original: {OriginalPrice}, Cheapest CT Zero: {CheapestCtZero}",
+					CardTraderZeroPriceReduction, newPriceEuros, lowestSealedWithCtZeroPrice.Value);
 						newPriceEuros = targetPrice;
 					}
 				}
@@ -103,7 +104,7 @@ public class PriceCalculationService : IPriceCalculationService
 		return null; // No rule applied
 	}
 
-	public async Task<decimal> CalculateBasePrice(IReadOnlyCollection<MarketProduct> filteredProducts, InventoryProduct item)
+	public decimal CalculateBasePrice(IReadOnlyCollection<MarketProduct> filteredProducts, InventoryProduct item)
 	{
 		var strategyName = _updateStrategiesConfig.PriceAdjustmentStrategy;
 		var selectedStrategy = _updateStrategiesConfig.Strategies[strategyName];
@@ -120,7 +121,7 @@ public class PriceCalculationService : IPriceCalculationService
 			var marketPricesCents = filteredProducts.Select(p => p.Price.Cents).ToList();
 
 			// Calculate base price depending on the adjustment type
-			basePriceEuros = await GetAdjustedBasePrice(
+			basePriceEuros = GetAdjustedBasePrice(
 				filteredProducts,
 				marketPricesCents,
 				selectedStrategy,
@@ -146,7 +147,7 @@ public class PriceCalculationService : IPriceCalculationService
 		}
 	}
 
-	private async Task<decimal> GetAdjustedBasePrice(
+	private decimal GetAdjustedBasePrice(
 		IReadOnlyCollection<MarketProduct> filteredProducts,
 		List<int> marketPricesCents,
 		StrategyConfig selectedStrategy,
@@ -166,12 +167,8 @@ public class PriceCalculationService : IPriceCalculationService
 				var marketAverageType = selectedStrategy.MarketAverage;
 				var averagePriceCents = marketAverageType switch
 				{
-					MarketAverage.Median => await Task.FromResult(
-						StatisticsHelper.Median(marketPricesCents)
-					),
-					MarketAverage.TrimmedMean => await Task.FromResult(
-						StatisticsHelper.TrimmedMean(marketPricesCents, selectedStrategy.TrimFraction)
-					),
+					MarketAverage.Median => StatisticsHelper.Median(marketPricesCents),
+					MarketAverage.TrimmedMean => StatisticsHelper.TrimmedMean(marketPricesCents, selectedStrategy.TrimFraction),
 					_ => throw new InvalidOperationException($"Unsupported MarketAverage type: {marketAverageType}")
 				};
 
@@ -265,7 +262,7 @@ public class PriceCalculationService : IPriceCalculationService
 			var lowestPriceCents = sealedWithCtZeroProducts.Min(p => p.Price.Cents);
 			var lowestPriceEuros = Conversion.ConvertToDecimalRatio(lowestPriceCents);
 
-			_logger.LogDebug($"Found lowest price from sealed_with_ct_zero sellers: {lowestPriceEuros}€");
+			_logger.LogDebug("Found lowest price from sealed_with_ct_zero sellers: {LowestPrice}€", lowestPriceEuros);
 			return lowestPriceEuros;
 		}
 		catch (Exception ex)
@@ -293,8 +290,8 @@ public class PriceCalculationService : IPriceCalculationService
 
 			if (proposedPrice + _priceProtectionSettings.PriceDifferenceThreshold < minAllowedPrice)
 			{
-				_logger.LogWarning($"Price protection triggered. Proposed: {proposedPrice}, " +
-								   $"Min allowed: {minAllowedPrice} (Reference: {referencePrice})");
+				_logger.LogWarning("Price protection triggered. Proposed: {ProposedPrice}, Min allowed: {MinAllowed} (Reference: {ReferencePrice})",
+					proposedPrice, minAllowedPrice, referencePrice);
 				return minAllowedPrice;
 			}
 		}

@@ -50,7 +50,7 @@ public class AzureCardPriceUpdater
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError($"Error in GetAllConfiguration: {ex.Message}");
+			_logger.LogError("Error in GetAllConfiguration: {ErrorMessage}", ex.Message);
 			return Task.FromResult<IActionResult>(new StatusCodeResult(500));
 		}
 	}
@@ -76,7 +76,7 @@ public class AzureCardPriceUpdater
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError($"Error in batch processing: {ex.Message}");
+			_logger.LogError("Error in batch processing: {ErrorMessage}", ex.Message);
 			return new StatusCodeResult(500);
 		}
 	}
@@ -143,7 +143,7 @@ public class AzureCardPriceUpdater
 	private async Task ProcessBatch(QueueClient queueClient, CancellationToken cancellationToken)
 	{
 		var listOfBatches = await _priceUpdateService.ExtractBatchOfItems(200, cancellationToken);
-		_logger.LogInformation($"Extracted {listOfBatches.Count} batches.");
+		_logger.LogInformation("Extracted {BatchCount} batches.", listOfBatches.Count);
 
 		foreach (var batch in listOfBatches)
 		{
