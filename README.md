@@ -33,7 +33,6 @@ The service can be executed as a Console Application or as an Azure Function.
 ## **Prerequisites**  
 Before starting, ensure you have:  
 ✔ **Docker** installed ([Download Docker](https://www.docker.com/get-started))  
-✔ Basic terminal/command-line knowledge  
 
 ---
 
@@ -44,6 +43,14 @@ Before starting, ensure you have:
 docker run -p 5000:5000 gianlucaflorian/cardtradermanager:latest
 ```
 
+#### **Using Docker Desktop**
+1. Search for `gianlucaflorian/cardtradermanager` in Docker Desktop
+2. Click **Run**
+3. Expand **Optional settings** and set **Host port** to `5000`
+4. Click **Run**
+
+> ⚠️ **Important:** The `-p 5000:5000` flag (or Host port setting in Docker Desktop) is required to access the application from your browser. Without it, the app runs inside the container but is not reachable.
+
 #### **Building from Source**
 ```bash
 git clone https://github.com/Wookappa/CardTraderManager.git
@@ -52,8 +59,11 @@ docker compose up -d
 ```
 
 #### **Access the Application**  
-Open your browser and go to:  
-🌐 [http://localhost:5000](http://localhost:5000)  
+Once the container is running, open your browser:  
+| | URL |
+|---|---|
+| 📦 **Frontend (UI)** | [http://localhost:5000](http://localhost:5000) |
+| 📡 **API (Swagger)** | [http://localhost:5000/swagger](http://localhost:5000/swagger) |
 
 ---
 

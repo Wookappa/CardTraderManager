@@ -151,14 +151,21 @@ app.Lifetime.ApplicationStarted.Register(() =>
 	var urls = app.Urls.Any() ? app.Urls : ["http://localhost:5000"];
 	foreach (var url in urls)
 	{
-		// Replace wildcard bindings with localhost for a user-friendly log
 		var displayUrl = url
 			.Replace("://+:", "://localhost:")
 			.Replace("://[::]:", "://localhost:")
 			.Replace("://0.0.0.0:", "://localhost:");
-		logger.LogInformation("CardTraderManager is running at: {Url}", displayUrl);
-		logger.LogInformation("Frontend (UI):  {Url}", displayUrl);
-		logger.LogInformation("API (Swagger):   {Url}", displayUrl + "/swagger");
+		logger.LogInformation("🚀 CardTraderManager is running at: {Url}", displayUrl);
+		logger.LogInformation("📦 Frontend (UI):  {Url}", displayUrl);
+		logger.LogInformation("📡 API (Swagger):   {Url}", displayUrl + "/swagger");
+	}
+
+	var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+	if (isDocker)
+	{
+		var logger2 = app.Services.GetRequiredService<ILogger<Program>>();
+		logger2.LogInformation("🐳 Running inside Docker. Make sure you mapped port 5000:");
+		logger2.LogInformation("   docker run -p 5000:5000 gianlucaflorian/cardtradermanager:latest");
 	}
 });
 
