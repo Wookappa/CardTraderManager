@@ -1,32 +1,11 @@
 services:
-  backend:
-    image: gianlucaflorian/cardtradermanager-backend:latest
+  cardtradermanager:
+    image: gianlucaflorian/cardtradermanager:latest
     build:
       context: .
-      dockerfile: CardTraderManager.Api/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
-    networks:
-      - cardtrader-network
     environment:
       - ASPNETCORE_URLS=http://+:5000
       - DOTNET_ENVIRONMENT=Development
-
-  frontend:
-    image: gianlucaflorian/cardtradermanager-frontend:latest
-    build:
-      context: ./CardTraderManager.Frontend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:80"
-    environment:
-      - API_BASE_URL=http://localhost:5000
-      - WS_URL=ws://localhost:5000/logs
-    networks:
-      - cardtrader-network
-    depends_on:
-      - backend
-
-networks:
-  cardtrader-network:
-    driver: bridge

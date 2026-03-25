@@ -94,6 +94,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthorization();
 
 // WebSocket middleware BEFORE MapControllers
@@ -141,5 +143,16 @@ app.Use(async (context, next) =>
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapFallbackToFile("index.html");
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+	var logger = app.Services.GetRequiredService<ILogger<Program>>();
+	var urls = app.Urls.Any() ? app.Urls : ["http://localhost:5000"];
+	foreach (var url in urls)
+	{
+		logger.LogInformation("🚀 CardTraderManager is running at: {Url}", url);
+	}
+});
 
 app.Run();

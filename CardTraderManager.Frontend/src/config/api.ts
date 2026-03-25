@@ -26,11 +26,12 @@ const getApiBaseUrl = (): string => {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // 3. Defaults
+  // 3. Production: same origin (FE served by backend)
   if (import.meta.env.PROD) {
-    return `${window.location.protocol}//${window.location.hostname}:5000`;
+    return '';
   }
 
+  // 4. Development: local backend
   return "https://localhost:7083";
 };
 
@@ -43,9 +44,10 @@ export const getWsUrl = (): string => {
     return import.meta.env.VITE_WS_URL;
   }
 
+  // Production: same host, derive protocol from page
   if (import.meta.env.PROD) {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${wsProtocol}//${window.location.hostname}:5000/logs`;
+    return `${wsProtocol}//${window.location.host}/logs`;
   }
 
   return "ws://localhost:5050/logs";

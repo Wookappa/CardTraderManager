@@ -33,27 +33,27 @@ The service can be executed as a Console Application or as an Azure Function.
 ## **Prerequisites**  
 Before starting, ensure you have:  
 ✔ **Docker** installed ([Download Docker](https://www.docker.com/get-started))  
-✔ **Docker Compose** (if using `docker-compose.yml`)  
 ✔ Basic terminal/command-line knowledge  
 
 ---
 
 ### **Quick Start**  
 
-#### **1. Clone the Repository**  
+#### **Using Docker Hub (Recommended)**
 ```bash
-git clone https://github.com/your-repo/your-app.git
-cd your-app
+docker run -p 5000:5000 gianlucaflorian/cardtradermanager:latest
 ```
 
-#### **2. Start the Services**  
+#### **Building from Source**
 ```bash
-docker-compose up -d
+git clone https://github.com/Wookappa/CardTraderManager.git
+cd CardTraderManager
+docker compose up -d
 ```
 
-#### **3. Access the Application**  
+#### **Access the Application**  
 Open your browser and go to:  
-🌐 [http://localhost:8080](http://localhost:8080)  
+🌐 [http://localhost:5000](http://localhost:5000)  
 
 ---
 
@@ -66,7 +66,9 @@ Open your browser and go to:
 
 ### Prerequisites
 
--   **.NET 8.0 SDK**
+-   **.NET 10.0 SDK**
+    
+-   **Node.js 18+** (for frontend development)
     
 -   **Visual Studio 2022** or later
 
