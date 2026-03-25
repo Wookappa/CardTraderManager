@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Terminal, X, Power } from "lucide-react";
+import { Terminal, X, Power, PowerOff } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -10,21 +10,32 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 
+type ConnectionStatus = 'disconnected' | 'connected' | 'reconnecting';
+
 interface LogsViewerProps {
   logs: string[];
   showLogs: boolean;
   setShowLogs: (show: boolean) => void;
   isConnected: boolean;
+  connectionStatus: ConnectionStatus;
   connectToLogStream: () => void;
+  disconnectLogStream: () => void;
   setLogs: (logs: string[]) => void;
 }
+
+const statusConfig: Record<ConnectionStatus, { label: string; className: string }> = {
+  connected: { label: 'Connected', className: 'text-green-600' },
+  reconnecting: { label: 'Reconnecting...', className: 'text-yellow-500 animate-pulse' },
+  disconnected: { label: 'Disconnected', className: 'text-orange-600' },
+};
 
 export const LogsViewer = ({
   logs,
   showLogs,
   setShowLogs,
-  isConnected,
+  connectionStatus,
   connectToLogStream,
+  disconnectLogStream,
   setLogs,
 }: LogsViewerProps) => {
   const [autoScroll, setAutoScroll] = useState(true);
@@ -42,17 +53,11 @@ export const LogsViewer = ({
     setAutoScroll(isAtBottom);
   };
   
-  // Helper function to handle connection button click
-  const handleConnect = () => {
-    if (!isConnected) {
-      connectToLogStream();
-    }
-  };
-  
-  // Helper function to clear logs
   const handleClearLogs = () => {
     setLogs([]);
   };
+
+  const status = statusConfig[connectionStatus];
   
   return (
     <Drawer open={showLogs} onOpenChange={setShowLogs} modal={false}>
@@ -61,16 +66,21 @@ export const LogsViewer = ({
           <DrawerHeader className="flex flex-row items-center justify-between border-b pb-2">
             <DrawerTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5" />
-              Live Logs {isConnected ? 
-                <span className="text-xs font-normal text-green-600">(Connected)</span> : 
-                <span className="text-xs font-normal text-orange-600">(Disconnected)</span>}
+              Live Logs
+              <span className={`text-xs font-normal ${status.className}`}>({status.label})</span>
             </DrawerTitle>
             <DrawerDescription className="sr-only">Real-time application logs</DrawerDescription>
             <div className="flex items-center gap-2">
-              {!isConnected && (
-                <Button size="sm" variant="outline" onClick={handleConnect}>
+              {connectionStatus === 'connected' && (
+                <Button size="sm" variant="outline" onClick={disconnectLogStream}>
+                  <PowerOff className="h-4 w-4 mr-1" />
+                  Disconnect
+                </Button>
+              )}
+              {connectionStatus !== 'connected' && (
+                <Button size="sm" variant="outline" onClick={connectToLogStream}>
                   <Power className="h-4 w-4 mr-1" />
-                  Connect
+                  {connectionStatus === 'reconnecting' ? 'Reconnect Now' : 'Connect'}
                 </Button>
               )}
               <Button size="sm" variant="ghost" onClick={handleClearLogs}>

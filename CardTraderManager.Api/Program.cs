@@ -97,7 +97,10 @@ app.UseCors("AllowFrontend");
 app.UseAuthorization();
 
 // WebSocket middleware BEFORE MapControllers
-app.UseWebSockets();
+app.UseWebSockets(new WebSocketOptions
+{
+	KeepAliveInterval = TimeSpan.FromSeconds(30)
+});
 app.Use(async (context, next) =>
 {
 	if (context.Request.Path == "/logs")

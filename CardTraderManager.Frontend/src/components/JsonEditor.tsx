@@ -23,10 +23,12 @@ const JsonEditor = ({ initialData, onBack }: JsonEditorProps) => {
     logs, 
     setLogs, 
     isConnected, 
+    connectionStatus,
     showLogs, 
     setShowLogs, 
     addLog, 
-    connectToLogStream 
+    connectToLogStream,
+    disconnectLogStream
   } = useWebSocketLogs();
   
   const {
@@ -78,7 +80,9 @@ const JsonEditor = ({ initialData, onBack }: JsonEditorProps) => {
         showLogs={showLogs}
         setShowLogs={setShowLogs}
         isConnected={isConnected}
+        connectionStatus={connectionStatus}
         connectToLogStream={connectToLogStream}
+        disconnectLogStream={disconnectLogStream}
         setLogs={setLogs}
       />
       
