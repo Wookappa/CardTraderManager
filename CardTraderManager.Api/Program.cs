@@ -151,7 +151,14 @@ app.Lifetime.ApplicationStarted.Register(() =>
 	var urls = app.Urls.Any() ? app.Urls : ["http://localhost:5000"];
 	foreach (var url in urls)
 	{
-		logger.LogInformation("🚀 CardTraderManager is running at: {Url}", url);
+		// Replace wildcard bindings with localhost for a user-friendly log
+		var displayUrl = url
+			.Replace("://+:", "://localhost:")
+			.Replace("://[::]:", "://localhost:")
+			.Replace("://0.0.0.0:", "://localhost:");
+		logger.LogInformation("CardTraderManager is running at: {Url}", displayUrl);
+		logger.LogInformation("Frontend (UI):  {Url}", displayUrl);
+		logger.LogInformation("API (Swagger):   {Url}", displayUrl + "/swagger");
 	}
 });
 
