@@ -1,13 +1,32 @@
 
+// Runtime configuration loaded from /config.json
+// Allows overriding API URLs per environment without rebuilding
+let runtimeConfig: { apiBaseUrl?: string; wsUrl?: string } = {};
+
+export async function loadRuntimeConfig(): Promise<void> {
+  try {
+    const res = await fetch('/config.json');
+    if (res.ok) {
+      runtimeConfig = await res.json();
+    }
+  } catch {
+    // Config not available — use defaults
+  }
+}
+
 // API configuration based on environment
 const getApiBaseUrl = (): string => {
-  // Explicit env override
+  // 1. Runtime config (from /config.json, set per environment)
+  if (runtimeConfig.apiBaseUrl) {
+    return runtimeConfig.apiBaseUrl;
+  }
+
+  // 2. Build-time env override
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // In production builds (Docker/deployed), backend runs on port 5000
-  // In dev mode (Vite dev server), backend runs on HTTPS port 7083
+  // 3. Defaults
   if (import.meta.env.PROD) {
     return `${window.location.protocol}//${window.location.hostname}:5000`;
   }
@@ -15,8 +34,25 @@ const getApiBaseUrl = (): string => {
   return "https://localhost:7083";
 };
 
+export const getWsUrl = (): string => {
+  if (runtimeConfig.wsUrl) {
+    return runtimeConfig.wsUrl;
+  }
+
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+
+  if (import.meta.env.PROD) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//${window.location.hostname}:5000/logs`;
+  }
+
+  return "ws://localhost:5050/logs";
+};
+
 export const API_CONFIG = {
-  baseUrl: getApiBaseUrl(),
+  get baseUrl() { return getApiBaseUrl(); },
   endpoints: {
     extractPriceUpdates: "/api/PriceUpdate/ExtractPriceUpdates",
     postPriceUpdates: "/api/PriceUpdate/PostPriceUpdates"

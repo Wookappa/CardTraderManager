@@ -1,22 +1,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-
-// Helper function to determine WebSocket URL based on environment
-const getWebSocketUrl = (): string => {
-  // Explicit env override
-  if (import.meta.env.VITE_WS_URL) {
-    return import.meta.env.VITE_WS_URL;
-  }
-
-  // In production builds (Docker/deployed), backend runs on port 5000
-  // In dev mode (Vite dev server), backend runs on port 5050
-  if (import.meta.env.PROD) {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${wsProtocol}//${window.location.hostname}:5000/logs`;
-  }
-
-  return "ws://localhost:5050/logs";
-};
+import { getWsUrl } from '@/config/api';
 
 export const useWebSocketLogs = () => {
   const [logs, setLogs] = useState<string[]>([]);
@@ -31,7 +15,7 @@ export const useWebSocketLogs = () => {
   
   const connectToLogStream = useCallback(() => {
     // Get WebSocket URL based on environment
-    const wsUrl = getWebSocketUrl();
+    const wsUrl = getWsUrl();
     
     if (websocketRef.current) {
       websocketRef.current.close();

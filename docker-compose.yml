@@ -3,10 +3,9 @@ services:
     image: gianlucaflorian/cardtradermanager-backend:latest
     build:
       context: .
-      dockerfile: /CardTraderManager.Api/Dockerfile
+      dockerfile: CardTraderManager.Api/Dockerfile
     ports:
       - "5000:5000"
-      - "5050:5050"
     networks:
       - cardtrader-network
     environment:
@@ -20,8 +19,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    environment:
+      - API_BASE_URL=http://localhost:5000
+      - WS_URL=ws://localhost:5000/logs
     networks:
       - cardtrader-network
+    depends_on:
+      - backend
 
 networks:
   cardtrader-network:
